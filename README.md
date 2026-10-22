@@ -20,7 +20,6 @@ Spring Boot 백엔드, React Native 앱, AWS 인프라와 배포 파이프라인
 | **앱** | Expo·React Native iOS 앱, 인스타 릴스·네이버 지도 공유로 가게 저장, 네이버 지도 SDK |
 | **AI** | 주소로 후보를 좁힌 뒤 LLM이 판정하는 장소 매칭, 인플루언서 릴스 캡션으로 가게 한 줄 소개 생성 |
 | **운영** | 블루·그린 배포, 스키마 호환성 CI, 업로드 OOM 해소·메모리 최고치 26% 감소, Sentry 알림 |
-| **출시** | master의 앱 변경은 CI 통과 후 TestFlight 업로드, 새 버전은 제출 조건을 확인해 App Store 심사까지 자동 제출 |
 
 ## 아키텍처
 
@@ -33,7 +32,6 @@ flowchart TB
   API -.-> LLM["OpenAI · 장소 이름 판정"]
   CSV["공공데이터 음식점 인허가"] -->|적재 배치| DB
   GH["GitHub Actions"] -->|ECR 이미지 · SSM 배포| API
-  GH -->|EAS 빌드| AS["TestFlight → App Store 심사"]
 ```
 
 ## 풀어낸 문제
@@ -87,7 +85,7 @@ bigram 표현식 GIN 인덱스를 추가하고, 검색어 길이에 따라 **SQL
 - **Infra** AWS (EC2 Graviton · RDS · CloudFront · ECR · SSM) · Docker · nginx
 - **CI/CD** GitHub Actions
 - **Ops** Sentry → Slack 알림 · PostHog
-- **App** React Native · Expo · TypeScript · TanStack Query · Zustand · 네이버 지도 SDK · EAS
+- **App** React Native · Expo · TypeScript · TanStack Query · Zustand · 네이버 지도 SDK
 
 <p align="center">
 <img src="images/home.png" width="180" alt="홈"> <img src="images/map.png" width="180" alt="지도"> <img src="images/post.png" width="180" alt="추천글">
