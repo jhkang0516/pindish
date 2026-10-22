@@ -1,35 +1,39 @@
 <div align="center">
 
-# 핀디쉬 PinDish — 백엔드
+# 핀디쉬 PinDish
 
-**목적에 맞는 맛집을 지도에서 찾고 공유하는 iOS 앱의 백엔드·인프라 설계와 운영 기록**
+**목적에 맞는 맛집을 지도에서 찾고 공유하는 iOS 앱 — 1인 개발·운영 기록**
 
 [![App Store](https://img.shields.io/badge/App_Store-출시·운영_중-0D96F6?style=for-the-badge&logo=appstore&logoColor=white)](https://apps.apple.com/kr/app/id6811157600)
 
-<sub>제품 소스는 비공개입니다. 이 레포는 백엔드 설계 판단과 운영 중 풀어낸 문제를 정리합니다.</sub>
+<sub>제품 소스는 비공개입니다. 이 레포는 설계 판단과 운영 중 풀어낸 문제를 정리합니다.</sub>
 
 </div>
 
-Spring Boot API, PostgreSQL/PostGIS 데이터 모델, AWS 인프라와 배포 파이프라인을 혼자 설계하고 운영합니다.
+Spring Boot 백엔드, React Native 앱, AWS 인프라와 배포 파이프라인을 혼자 설계·개발하고 운영합니다. 중심은 백엔드입니다.
 
 | 영역 | 한 일 |
 |---|---|
 | **API·데이터** | 지도 집계·근처 가게·피드·검색 API, 공공데이터 가게 53만 건 적재 배치 |
 | **성능** | 53만 행에서 두 글자 검색 0.9초 → 0.1초, 추천 피드 전체 정렬 제거 |
 | **정합성** | 비관 잠금 함정 수정, 공유된 장소 매칭률 62% → 77% |
+| **앱** | Expo·React Native iOS 앱, 인스타 릴스·네이버 지도 공유로 가게 저장, 네이버 지도 SDK |
+| **AI** | 주소로 후보를 좁힌 뒤 LLM이 판정하는 장소 매칭, 인플루언서 릴스 캡션으로 가게 한 줄 소개 생성 |
 | **운영** | 블루·그린 배포, 스키마 호환성 CI, 업로드 OOM 해소·메모리 최고치 26% 감소, Sentry 알림 |
+| **출시** | master의 앱 변경은 CI 통과 후 TestFlight 업로드, 새 버전은 제출 조건을 확인해 App Store 심사까지 자동 제출 |
 
 ## 아키텍처
 
 ```mermaid
 flowchart TB
-  App["iOS 앱"] -->|HTTPS| CF[CloudFront]
+  App["iOS 앱 · Expo / React Native"] -->|HTTPS| CF[CloudFront]
   CF --> NG["nginx · 블루·그린 전환"]
   NG --> API["Spring Boot · 배포 중 2개 · EC2 t4g 2GB"]
   API --> DB[("RDS PostgreSQL 16 · PostGIS · pg_trgm")]
   API -.-> LLM["OpenAI · 장소 이름 판정"]
   CSV["공공데이터 음식점 인허가"] -->|적재 배치| DB
   GH["GitHub Actions"] -->|ECR 이미지 · SSM 배포| API
+  GH -->|EAS 빌드| AS["TestFlight → App Store 심사"]
 ```
 
 ## 풀어낸 문제
@@ -70,7 +74,7 @@ bigram 표현식 GIN 인덱스를 추가하고, 검색어 길이에 따라 **SQL
 
 네이버 지도 목록을 공유하면 서비스 DB의 가게와 연결합니다. 좌표 반경과 이름 유사도 규칙만으로는 62%만 붙었습니다.
 반경 안 후보를 **주소가 같은 가게로 먼저 좁힌 뒤** LLM에 이름 판정을 맡겨 77%까지 올렸습니다. 주소로 좁히지 않고 맡기면 판정의 약 10%가 엉뚱한 가게로 붙었기 때문에, 좁히는 단계를 먼저 두었습니다.
-끝내 못 붙은 곳은 공용 가게 테이블에 자동으로 만들지 않고 사용자가 확인하는 목록에 남깁니다.
+판정했는데도 기존 가게가 없으면 네이버 정보로 공용 가게를 만들어 저장하고, 판정 호출이 실패한 항목은 보류했다가 서버 기동 때 다시 판정합니다. 여러 서버가 같은 가게를 다른 순서로 만들며 교착하지 않도록, 쓰기 전에 advisory lock으로 줄을 세웁니다.
 
 ## 테스트
 
@@ -83,7 +87,7 @@ bigram 표현식 GIN 인덱스를 추가하고, 검색어 길이에 따라 **SQL
 - **Infra** AWS (EC2 Graviton · RDS · CloudFront · ECR · SSM) · Docker · nginx
 - **CI/CD** GitHub Actions
 - **Ops** Sentry → Slack 알림 · PostHog
-- **App** React Native · Expo · TypeScript (함께 개발)
+- **App** React Native · Expo · TypeScript · TanStack Query · Zustand · 네이버 지도 SDK · EAS
 
 <p align="center">
 <img src="images/home.png" width="180" alt="홈"> <img src="images/map.png" width="180" alt="지도"> <img src="images/post.png" width="180" alt="추천글">
